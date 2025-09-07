@@ -1,73 +1,97 @@
-import React, { useState } from "react";
-import './App.css'; 
-import SurveyForm from "./components/SurveyForm"; 
-import Summary from "./components/Summary";       
+import React, { useState, useCallback } from "react";
+import "./App.css";
+import SurveyForm from "./components/SurveyForm";
+import Summary from "./components/Summary";
 import movies from "./constants/movies";
-import { validateName, validateEmail, validateMovie } from "./utils/validation";
+import {
+  validateName,
+  validateEmail,
+  validateSelectedOption,
+  validateAll,
+} from "./utils/validation";
 
 export default function App() {
-  
-  
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [comment, setComment] = useState("");
-  const [selectedOption, setSelectedOption] = useState("");
+  const [values, setValues] = useState({
+    name: "",
+    email: "",
+    comment: "",
+    selectedOption: "",
+  });
   const [errors, setErrors] = useState({});
   const [showSummary, setShowSummary] = useState(false);
 
-  // ฟังก์ชัน UI ของการเลือกหนัง 
-  const handleChangeMovie = (e) => setSelectedOption(e.target.value);
+  // --- handlers: อัปเดตค่า + validate รายฟิลด์ทันทีเพื่อ UX ดีขึ้น
+  const onChangeName = useCallback((v) => {
+    setValues((prev) => ({ ...prev, name: v }));
+    const msg = validateName(v);
+    setErrors((prev) => ({ ...prev, ...(msg ? { name: msg } : { name: undefined }) }));
+  }, []);
 
-  // ฟังก์ชันเช็คเงื่อนไขของการกรอกข้อมูลแต่ละอัน ถ้าครบก็ส่งข้อมูลได้ -> ไปหน้าถัดไป 
-  function handleSubmit(event) {
-    event.preventDefault();
-    const okName = validateName(name, setErrors);
-    const okEmail = validateEmail(email, setErrors);
-    const okMovie = validateMovie(selectedOption, setErrors);
-    if (okName && okEmail && okMovie) setShowSummary(true);
-  }
+  const onChangeEmail = useCallback((v) => {
+    setValues((prev) => ({ ...prev, email: v }));
+    const msg = validateEmail(v);
+    setErrors((prev) => ({ ...prev, ...(msg ? { email: msg } : { email: undefined }) }));
+  }, []);
 
-  // รีเซ็ตค่าแบบเดิมทั้งหมด
-  function handleReset() {
-    setName("");              // ล้างค่าชื่อ
-    setEmail("");             // ล้างค่าอีเมล
-    setComment("");           // ล้างคอมเมนต์
-    setSelectedOption("");    // ยกเลิกการเลือกหนัง
-    setErrors({});            // ล้างข้อความ error ทั้งหมด
-  }
+  const onChangeComment = useCallback((v) => {
+    setValues((prev) => ({ ...prev, comment: v }));
+  }, []);
 
-  // เริ่มใหม่: เคลียร์ + กลับไปหน้าแบบฟอร์ม
-  function handleRestart() {
-    handleReset();            // เรียกฟังก์ชัน handleReset เพื่อเคลียร์ฟอร์ม คือต้องกรอกใหม่
-    setShowSummary(false);    // ปิดหน้า summary -> กลับไปหน้าแบบฟอร์ม
-  }
+  const onChangeMovie = useCallback((val) => {
+    setValues((prev) => ({ ...prev, selectedOption: val }));
+    const msg = validateSelectedOption(val);
+    setErrors((prev) => ({ ...prev, ...(msg ? { selectedOption: msg } : { selectedOption: undefined }) }));
+  }, []);
 
-  // สลับหน้าตาม showSummary
+  // --- submit/reset/restart
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // trim เก็บเข้าค่า state เพื่อให้ Summary สะอาด
+    const trimmed = {
+      ...values,
+      name: values.name.trim(),
+      email: values.email.trim(),
+      comment: values.comment.trim(),
+    };
+    setValues(trimmed);
+
+    const { errors: nextErrors, isValid } = validateAll(trimmed);
+    setErrors(nextErrors);
+    if (isValid) setShowSummary(true);
+  };
+
+  const handleReset = () => {
+    setValues({ name: "", email: "", comment: "", selectedOption: "" });
+    setErrors({});
+  };
+
+  const handleRestart = () => {
+    handleReset();
+    setShowSummary(false);
+  };
+
+  // toggle แสดง Summary ที่เดียว
   if (showSummary) {
     return (
       <Summary
-        name={name}
-        email={email}
-        selectedOption={selectedOption}
-        comment={comment}
+        name={values.name}
+        email={values.email}
+        selectedOption={values.selectedOption}
+        comment={values.comment}
         onRestart={handleRestart}
       />
     );
-  }
+    }
 
-  // หน้าแบบฟอร์ม
   return (
     <SurveyForm
-      // data
-      values={{ name, email, comment, selectedOption }} 
+      values={values}
       errors={errors}
-      movies={movies} // เอาตัว movies มา หน้า App ก่อน -> ส่งให้ SurveyForm
-
-      // handlers 
-      onChangeName={setName}
-      onChangeEmail={setEmail}
-      onChangeComment={setComment}
-      onChangeMovie={handleChangeMovie}
+      movies={movies}
+      onChangeName={onChangeName}
+      onChangeEmail={onChangeEmail}
+      onChangeComment={onChangeComment}
+      onChangeMovie={onChangeMovie}
       onSubmit={handleSubmit}
       onReset={handleReset}
     />
