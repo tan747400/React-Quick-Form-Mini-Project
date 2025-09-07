@@ -1,3 +1,5 @@
+import React from "react";
+
 export default function Form({
   values, errors, movies, showSummary,
   onChangeName, onChangeEmail, onChangeComment,
